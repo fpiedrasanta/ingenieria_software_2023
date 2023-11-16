@@ -34,7 +34,7 @@ public class ResourceController : ControllerBase
     }
 
     [HttpGet("type/{id}")]
-    public async Task<ActionResult<List<DTOResource>>> Get(
+    public async Task<ActionResult<List<DTOListResponse>>> Get(
         [FromRoute] long id, 
         [FromQuery] DTOList dtoList)
     {
@@ -56,12 +56,14 @@ public class ResourceController : ControllerBase
         int page = dtoList.Page != null ? dtoList.Page.Value : 1;
         int pageSize = dtoList.PageSize != null ? dtoList.PageSize.Value : 10;
 
+        var count = await query.CountAsync();
+
         var resources = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        List<DTOResource> dtos = new List<DTOResource>();
+        List<Object> dtos = new List<Object>();
 
         foreach(Resource resource in resources)
         {
@@ -74,7 +76,21 @@ public class ResourceController : ControllerBase
             });
         }
 
-        return Ok(dtos);
+        int pageCount = (count / pageSize) + 1;
+
+
+        return Ok(new DTOListResponse
+        {
+            HasNextPage = (page + 1) <= pageCount,
+            HasPrevPage = page > 1,
+            List = dtos,
+            NextPage = (page + 1) <= pageCount ? page + 1 : page,
+            Page = page,
+            PageSize = pageSize,
+            PrevPage = page > 1 ? page - 1 : 1,
+            TotalCount = count,
+            TotalPage = pageCount
+        });
     }
 
     [HttpPost]
